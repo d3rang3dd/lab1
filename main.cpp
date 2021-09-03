@@ -1,5 +1,4 @@
 #include <iostream>
-#include <clocale>
 #include <windows.h>
 
 const int MAX_LENGTH = 256;
@@ -17,20 +16,18 @@ void variadic_print(std::ostream& os, T&& x, Args&&... args)
 template <typename Status, typename T, typename ...Args>
 void test_status_print(Status status, T action, Args&&... args)
 {
-    if (!(status) ||
-        (std::is_same <Status, LSTATUS>::value && status != ERROR_SUCCESS))
-        std::cerr << std::boolalpha << "Error " << GetLastError() << action << '\n';
+    bool typetest = std::is_same <Status, LSTATUS>::value;
+    if ((typetest && status != ERROR_SUCCESS) || (!typetest && !status))
+        std::cerr << "Error " << GetLastError() << action << '\n';
     else
         variadic_print(std::cout, args...);
 }
 
 int main()
 {
-    std::setlocale(LC_ALL, "Russian");
-
     // версия ОС
     OSVERSIONINFOA ver_info {};
-    ver_info.dwOSVersionInfoSize = sizeof(OSVERSIONINFO);
+    ver_info.dwOSVersionInfoSize = sizeof(OSVERSIONINFOA);
     test_status_print(GetVersionEx(&ver_info),
                       " occured during determining OS version!",
                       "OS Version: ",
@@ -109,17 +106,17 @@ int main()
     for (int i = 0; ; ++ i)
     {
         status = RegEnumValue
-                    (hkey, 0, name, &sz_name, nullptr, nullptr, nullptr, nullptr);
+                    (hkey, i, name, &sz_name, nullptr, nullptr, nullptr, nullptr);
         if (status == ERROR_SUCCESS)
+        {
             test_status_print(RegQueryValueEx
                                   (hkey, name, nullptr, nullptr, nullptr, nullptr),
-                              " occured during reading registry key!");
-        else
-        {
-            //std::cerr << "Error " << GetLastError()
-                      //<< " occured during reading registry key!\n";
-            break;
+                              " occured during reading registry value!",
+                              name, '\n');
+            memset(name, 0, sz_name);
+            sz_name = sizeof(name);
         }
+        else break;
     }
     std::cout << '\n';
 
